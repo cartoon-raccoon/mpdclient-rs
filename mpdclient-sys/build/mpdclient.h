@@ -1,0 +1,1 @@
+#include <mpd/client.h>
