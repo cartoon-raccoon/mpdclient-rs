@@ -1,0 +1,6 @@
+{
+    "rust-analyzer.linkedProjects": [
+        "./mpdclient/Cargo.toml"
+    ],
+    "rust-analyzer.showUnlinkedFileNotification": false
+}
