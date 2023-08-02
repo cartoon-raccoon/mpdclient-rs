@@ -56,8 +56,8 @@ impl RawMpdClient {
             we assert that ptr is non-null
 
             we get a *const i8 which cannot be mutated, and immediately
-            wrap it in a CStr, which is then immediate converted into a
-            CString, so it is not mutated */
+            wrap it in a CStr, which is then immediately converted into an
+            owned CString, so it is not mutated */
             CString::from(CStr::from_ptr(raw))
         };
 
@@ -70,41 +70,51 @@ impl RawMpdClient {
     fn handle_error(&mut self) -> Result<()> {
         let errcode = unsafe {mpd_connection_get_error(self.conn)};
 
+        if errcode == mpd_error_MPD_ERROR_SUCCESS {
+            return Ok(())
+        }
+
+        // all rust strings are valid UTF-8
+        let errmsg = self.get_error_msg();
+
         match errcode {
-            mpd_error_MPD_ERROR_SUCCESS => return Ok(()),
             mpd_error_MPD_ERROR_OOM => std::process::abort(),
             mpd_error_MPD_ERROR_ARGUMENT => {
-                // todo
+                // todo handle this internally
             }
             mpd_error_MPD_ERROR_STATE => {
-                //todo
-            }
+                // todo handle this internally
+            },
             mpd_error_MPD_ERROR_TIMEOUT => return Err(
                 MpdError {
                     kind: MpdErrorKind::Io(IoError::from(ErrorKind::TimedOut)), 
-                    errmsg: self.get_error_msg(),
+                    errmsg,
                 }
             ),
             mpd_error_MPD_ERROR_SYSTEM => {
-                // todo
+                let errno = unsafe {mpd_connection_get_system_error(self.conn)};
+                return Err(MpdError {
+                    kind: MpdErrorKind::Io(IoError::from_raw_os_error(errno)),
+                    errmsg,
+                })
             }
             mpd_error_MPD_ERROR_RESOLVER => return Err(
                 MpdError {
                     kind: MpdErrorKind::UnknownHost,
-                    errmsg: self.get_error_msg(),
+                    errmsg,
                 }
             ),
             mpd_error_MPD_ERROR_CLOSED => return Err(
                 MpdError {
                     kind: MpdErrorKind::Io(IoError::from(ErrorKind::ConnectionAborted)),
-                    errmsg: self.get_error_msg(),
+                    errmsg,
                 }
                 
             ),
             mpd_error_MPD_ERROR_SERVER => return Err(
                 MpdError {
                     kind: MpdErrorKind::Server(self.process_server_error()),
-                    errmsg: self.get_error_msg(),
+                    errmsg,
                 }
             ),
             _ => unreachable!()

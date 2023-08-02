@@ -1,5 +1,7 @@
 use std::io::Error as IoError;
 
+use thiserror::Error;
+
 pub mod player;
 
 use player::Player;
@@ -35,7 +37,8 @@ impl MpdClient {
 
 pub type Result<T> = ::core::result::Result<T, MpdError>;
 
-#[derive(Debug)]
+#[derive(Debug, Error)]
+#[error("{}", errmsg)]
 pub struct MpdError {
     pub(crate) kind: MpdErrorKind,
     pub(crate) errmsg: String,
@@ -73,7 +76,6 @@ pub enum ServerError {
 #[derive(Debug)]
 pub enum MpdErrorKind {
     Io(IoError),
-    Arguments,
     UnknownHost,
     Malformed,
     Server(ServerError),
